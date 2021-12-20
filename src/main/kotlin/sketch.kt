@@ -287,12 +287,14 @@ fun HSVRGB(image: IntArray, hsv: DoubleArray) {
         var G: Double
         var B: Double
 
-        if (h >= 300.0)         { R = c; G = 0.0; B = x; }
-        else if (h >= 240.0)    { R = x; G = 0.0; B = c; }
-        else if (h >= 180.0)    { R = 0.0; G = x; B = c; }
-        else if (h >= 120.0)    { R = 0.0; G = c; B = x; }
-        else if (h >= 60.0)     { R = x; G = c; B = 0.0; }
-        else                    { R = c; G = x; B = 0.0; }
+        when {
+            h >= 300.0 -> { R = c; G = 0.0; B = x; }
+            h >= 240.0 -> { R = x; G = 0.0; B = c; }
+            h >= 180.0 -> { R = 0.0; G = x; B = c; }
+            h >= 120.0 -> { R = 0.0; G = c; B = x; }
+            h >= 60.0 -> { R = x; G = c; B = 0.0; }
+            else -> { R = c; G = x; B = 0.0; }
+        }
 
         val r = ((R + m) * 255.0 + 0.5).toInt()
         val g = ((G + m) * 255.0 + 0.5).toInt()

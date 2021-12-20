@@ -33,7 +33,7 @@ fun equalizeHistogram(image: IntArray) {
     var histogram = IntArray(256) { 0 }
     image.forEach { histogram[it]++ }
     // Cumulative Sum of Histogram.
-    for (i in 1 until histogram.size) histogram[i] += histogram[i - 1]
+    (1 until histogram.size).forEach { histogram[it] += histogram[it - 1] }
     // Cumulative Distribution Function (CDF) of Histogram.
     histogram.forEachIndexed { index, value -> histogram[index] = 255 * value / histogram[255] }
     image.forEachIndexed { index, pixel -> image[index] = histogram[pixel] }
@@ -46,16 +46,17 @@ fun equalizeHistogram(image: IntArray) {
  * @param sigma     Parameter for Gaussian Function.
  */
 fun gaussian1D(size: Int, sigma: Double): DoubleArray {
-    var size = size
-    if (size % 2 == 0) size++
+    var n = size
+    if (size % 2 == 0) n++
 
     val variance = sigma * sigma * 2.0
     val coefficient = 1 / sqrt(variance * Math.PI)
 
-    val vector = DoubleArray(size) {
-        val x = it - size / 2
+    val vector = DoubleArray(n) {
+        val x = it - n / 2
         coefficient * exp(-(x * x) / variance)
     }
+
     return vector.map { it / vector.sum() }.toDoubleArray()
 }
 
@@ -66,16 +67,16 @@ fun gaussian1D(size: Int, sigma: Double): DoubleArray {
  * @param sigma     Parameter for Gaussian Function.
  */
 fun gaussian2D(size: Int, sigma: Double): Array<DoubleArray> {
-    var size = size
-    if (size % 2 == 0) size++
+    var n = size
+    if (size % 2 == 0) n++
 
     val variance = sigma * sigma * 2.0
     val coefficient = 1 / (variance * Math.PI)
 
-    val vector = Array(size) { it ->
-        val x = it - size / 2
-        DoubleArray(size) {
-            val y = it - size / 2
+    val vector = Array(n) { it ->
+        val x = it - n / 2
+        DoubleArray(n) {
+            val y = it - n / 2
             coefficient * exp(-(x * x + y * y) / variance)
         }
     }
@@ -135,8 +136,6 @@ fun gaussian(sketch: IntArray, width: Int, height: Int, size: Int, sigma: Double
  * @param sigmaS    Sigma for Space.
  */
 fun bilateral(sketch: IntArray, width: Int, height: Int, size: Int, sigmaC: Double, sigmaS: Double) {
-    val half = size / 2
-
     // Edge Pad "image" by "half" and store in "padded".
     val padded = IntArray((width + size) * (height + size))
     pad(padded, sketch, width, height, size)

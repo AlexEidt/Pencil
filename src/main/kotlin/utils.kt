@@ -30,21 +30,21 @@ fun min(a: Double, b: Double, c: Double): Double {
  */
 fun pad(result: IntArray, image: IntArray, width: Int, height: Int, size: Int) {
     val pad = size / 2
-    val resultWidth = width + size
+    var index = 0
     for (h in 0 until pad) {
-        for (w in 0 until pad) result[h * resultWidth + w] = image[0]
-        for (w in pad until width + pad) result[h * resultWidth + w] = image[w - pad]
-        for (w in width + pad until width + size) result[h * resultWidth + w] = image[width - 1]
+        for (w in 0 until pad) result[index++] = image[0]
+        for (w in pad until width + pad) result[index++] = image[w - pad]
+        for (w in width + pad until width + size) result[index++] = image[width - 1]
     }
     for (h in pad until height + pad) {
-        for (w in 0 until pad) result[h * resultWidth + w] = image[(h - pad) * width]
-        for (w in pad until width + pad) result[h * resultWidth + w] = image[(h - pad) * width + w - pad]
-        for (w in width + pad until width + size) result[h * resultWidth + w] = image[(h - pad) * width + width - 1]
+        for (w in 0 until pad) result[index++] = image[(h - pad) * width]
+        for (w in pad until width + pad) result[index++] = image[(h - pad) * width + w - pad]
+        for (w in width + pad until width + size) result[index++] = image[(h - pad) * width + width - 1]
     }
     for (h in height + pad until height + size) {
-        for (w in 0 until pad) result[h * resultWidth + w] = image[(height - 1) * width]
-        for (w in pad until width + pad) result[h * resultWidth + w] = image[(height - 1) * width + w - pad]
-        for (w in width + pad until width + size) result[h * resultWidth + w] = image[(height - 1) * width + width - 1]
+        for (w in 0 until pad) result[index++] = image[(height - 1) * width]
+        for (w in pad until width + pad) result[index++] = image[(height - 1) * width + w - pad]
+        for (w in width + pad until width + size) result[index++] = image[(height - 1) * width + width - 1]
     }
 }
 
@@ -102,6 +102,5 @@ fun readImage(filename: String): Triple<IntArray, Int, Int> {
         println("Error opening $filename")
         println(e.message)
         exitProcess(1)
-        Triple(IntArray(0), 0, 0)
     }
 }

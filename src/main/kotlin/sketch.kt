@@ -30,12 +30,12 @@ fun grayscale(image: IntArray) {
  * @param image     The image to grayscale. Each int represents an RGB pixel.
  */
 fun equalizeHistogram(image: IntArray) {
-    var histogram = IntArray(256) { 0 }
+    val histogram = IntArray(256) { 0 }
     image.forEach { histogram[it]++ }
     // Cumulative Sum of Histogram.
     (1 until histogram.size).forEach { histogram[it] += histogram[it - 1] }
     // Cumulative Distribution Function (CDF) of Histogram.
-    histogram.forEachIndexed { index, value -> histogram[index] = 255 * value / histogram[255] }
+    histogram.forEachIndexed { index, value -> histogram[index] = (255.0 * value / histogram[255] + 0.5).toInt() }
     image.forEachIndexed { index, pixel -> image[index] = histogram[pixel] }
 }
 

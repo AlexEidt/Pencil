@@ -22,7 +22,7 @@ Original | Sketched | Colored
 
 The Image Processing Pipeline used for the Pencil Sketching Algorithm is shown below.
 
-<img src="Docs/Pipeline.svg" alt="Pencil Sketching Algorithm Pipeline" />
+<img src="Docs/pipeline.svg" alt="Pencil Sketching Algorithm Pipeline" />
 
 ## Pipeline Example
 

@@ -9,12 +9,12 @@ fun main() {
 
     val gaussianSize = 31
     val sigma = 6.0
-    val bilateralSize = 5
+    val bilateralSize = 3
     val sigmaC = 230.0
     val sigmaS = 230.0
     val gamma = 6.0
     val hue = 1.0
-    val saturation = 0.5
+    val saturation = 0.8
 
     val gray = image.clone()
     grayscale(gray)

@@ -3,7 +3,7 @@
  */
 
 fun main() {
-    val filename = "Results/tree.jpg"
+    val filename = "Results/rocks.jpg"
 
     val (image, width, height) = readImage(filename)
 

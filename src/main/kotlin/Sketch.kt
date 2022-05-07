@@ -34,8 +34,10 @@ fun grayscale(image: IntArray) {
  */
 fun equalizeHistogram(image: IntArray) {
     val cpus = Runtime.getRuntime().availableProcessors()
+
     val histogram = IntArray(256) { 0 }
     val histograms = Array(cpus) { IntArray(256) { 0 } }
+
     parallel { cpu, cpus ->
         for (i in cpu until image.size step cpus) {
             histograms[cpu][image[i]]++

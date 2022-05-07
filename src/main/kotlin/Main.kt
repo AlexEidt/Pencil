@@ -31,9 +31,9 @@ fun main() {
 
     // Colored Pencil Sketch
     coloredPencil(image, sketch, hue, saturation)
-    writeImage(image, width, height, "${filename.split(".")[0]}_colored1.jpg")
+    writeImage(image, width, height, "${filename.split(".")[0]}_colored.jpg")
 
     RGB(sketch)
     // Black and White Sketch
-    writeImage(sketch, width, height, "${filename.split(".")[0]}_result1.jpg")
+    writeImage(sketch, width, height, "${filename.split(".")[0]}_result.jpg")
 }

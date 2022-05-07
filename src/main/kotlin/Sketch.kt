@@ -50,7 +50,12 @@ fun equalizeHistogram(image: IntArray) {
     (1 until histogram.size).forEach { histogram[it] += histogram[it - 1] }
     // Cumulative Distribution Function (CDF) of Histogram.
     histogram.forEachIndexed { index, value -> histogram[index] = (255.0 * value / histogram[255] + 0.5).toInt() }
-    image.forEachIndexed { index, pixel -> image[index] = histogram[pixel] }
+
+    parallel { cpu, cpus ->
+        for (i in cpu until image.size step cpus) {
+            image[i] = histogram[image[i]]
+        }
+    }
 }
 
 /*

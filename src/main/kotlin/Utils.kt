@@ -8,6 +8,7 @@ import java.io.IOException
 import javax.imageio.ImageIO
 import kotlin.system.exitProcess
 
+
 // Three-way maximum.
 fun max(a: Double, b: Double, c: Double): Double {
     return if (a > b) if (a > c) a else c else if (b > c) b else c
@@ -16,6 +17,24 @@ fun max(a: Double, b: Double, c: Double): Double {
 // Three-way minimum.
 fun min(a: Double, b: Double, c: Double): Double {
     return if (a < b) if (a < c) a else c else if (b < c) b else c
+}
+
+/*
+ * Runs the given function in parallel on separate threads on all CPU cores.
+ *
+ * @param func      The function to run.
+*/
+fun parallel(func: (cpu: Int, cpus: Int) -> (Unit)) {
+    val cpus = Runtime.getRuntime().availableProcessors()
+    val threads = Array(cpus) {
+        Thread { func(it, cpus) }
+    }
+
+    for (thread in threads) thread.start()
+
+    try {
+        for (thread in threads) thread.join()
+    } catch (ie: InterruptedException) {}
 }
 
 /*
@@ -30,21 +49,24 @@ fun min(a: Double, b: Double, c: Double): Double {
  */
 fun pad(result: IntArray, image: IntArray, width: Int, height: Int, size: Int) {
     val pad = size / 2
-    var index = 0
-    for (h in 0 until pad) {
-        for (w in 0 until pad) result[index++] = image[0]
-        for (w in pad until width + pad) result[index++] = image[w - pad]
-        for (w in width + pad until width + size) result[index++] = image[width - 1]
-    }
-    for (h in pad until height + pad) {
-        for (w in 0 until pad) result[index++] = image[(h - pad) * width]
-        for (w in pad until width + pad) result[index++] = image[(h - pad) * width + w - pad]
-        for (w in width + pad until width + size) result[index++] = image[(h - pad) * width + width - 1]
-    }
-    for (h in height + pad until height + size) {
-        for (w in 0 until pad) result[index++] = image[(height - 1) * width]
-        for (w in pad until width + pad) result[index++] = image[(height - 1) * width + w - pad]
-        for (w in width + pad until width + size) result[index++] = image[(height - 1) * width + width - 1]
+    val rw = width + size
+
+    parallel { cpu, cpus ->
+        for (h in cpu until pad step cpus) {
+            for (w in 0 until pad) result[h * rw + w] = image[0]
+            for (w in pad until width + pad) result[h * rw + w] = image[w - pad]
+            for (w in width + pad until width + size) result[h * rw + w] = image[width - 1]
+        }
+        for (h in pad + cpu until height + pad step cpus) {
+            for (w in 0 until pad) result[h * rw + w] = image[(h - pad) * width]
+            for (w in pad until width + pad) result[h * rw + w] = image[(h - pad) * width + w - pad]
+            for (w in width + pad until width + size) result[h * rw + w] = image[(h - pad) * width + width - 1]
+        }
+        for (h in height + pad + cpu until height + size step cpus) {
+            for (w in 0 until pad) result[h * rw + w] = image[(height - 1) * width]
+            for (w in pad until width + pad) result[h * rw + w] = image[(height - 1) * width + w - pad]
+            for (w in width + pad until width + size) result[h * rw + w] = image[(height - 1) * width + width - 1]
+        }
     }
 }
 
@@ -91,12 +113,15 @@ fun readImage(filename: String): Triple<IntArray, Int, Int> {
         val width = image.width
         val height = image.height
         val pixels = IntArray(width * height)
-        var index = 0
-        for (h in 0 until height) {
-            for (w in 0 until width) {
-                pixels[index++] = image.getRGB(w, h)
+
+        parallel { cpu, cpus ->
+            for (h in cpu until height step cpus) {
+                for (w in 0 until width) {
+                    pixels[h * width + w] = image.getRGB(w, h)
+                }
             }
         }
+
         Triple(pixels, width, height)
     } catch (e: IOException) {
         println("Error opening $filename")

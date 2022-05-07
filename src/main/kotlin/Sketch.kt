@@ -16,11 +16,14 @@ import kotlin.math.sqrt
  * @param height    The height of the image.
  */
 fun grayscale(image: IntArray) {
-    image.forEachIndexed { index, pixel ->
-        val r = pixel shr 16 and 0xFF
-        val g = pixel shr 8 and 0xFF
-        val b = pixel and 0xFF
-        image[index] = (3 * r + 4 * g + b) / 8
+    parallel { cpu, cpus ->
+        for (i in cpu until image.size step cpus) {
+            val pixel = image[i]
+            val r = pixel shr 16 and 0xFF
+            val g = pixel shr 8 and 0xFF
+            val b = pixel and 0xFF
+            image[i] = (3 * r + 4 * g + b) / 8
+        }
     }
 }
 
@@ -30,8 +33,17 @@ fun grayscale(image: IntArray) {
  * @param image     The image to grayscale. Each int represents an RGB pixel.
  */
 fun equalizeHistogram(image: IntArray) {
+    val cpus = Runtime.getRuntime().availableProcessors()
     val histogram = IntArray(256) { 0 }
-    image.forEach { histogram[it]++ }
+    val histograms = Array(cpus) { IntArray(256) { 0 } }
+    parallel { cpu, cpus ->
+        for (i in cpu until image.size step cpus) {
+            histograms[cpu][image[i]]++
+        }
+    }
+
+    histograms.forEach { hist -> hist.forEachIndexed { i, count -> histogram[i] += count } }
+
     // Cumulative Sum of Histogram.
     (1 until histogram.size).forEach { histogram[it] += histogram[it - 1] }
     // Cumulative Distribution Function (CDF) of Histogram.
@@ -102,25 +114,27 @@ fun gaussian(sketch: IntArray, width: Int, height: Int, size: Int, sigma: Double
     val gauss = gaussian1D(size, sigma)
     // Edge Pad "image" by "half" and store in "padded".
     pad(padded, sketch, width, height, size)
-    var index = 0
-    for (h in 0 until height) {
-        for (w in 0 until width) {
-            var sum = 0.5
-            for (i in 0 until size) {
-                sum += gauss[i] * padded[(h + half) * (width + size) + w + i]
+    parallel { cpu, cpus ->
+        for (h in cpu until height step cpus) {
+            for (w in 0 until width) {
+                var sum = 0.5
+                for (i in 0 until size) {
+                    sum += gauss[i] * padded[(h + half) * (width + size) + w + i]
+                }
+                sketch[h * width + w] = sum.toInt()
             }
-            sketch[index++] = sum.toInt()
         }
     }
     pad(padded, sketch, width, height, size)
-    index = 0
-    for (h in 0 until height) {
-        for (w in 0 until width) {
-            var sum = 0.5
-            for (i in 0 until size) {
-                sum += gauss[i] * padded[(h + i) * (width + size) + w + half]
+    parallel { cpu, cpus ->
+        for (h in cpu until height step cpus) {
+            for (w in 0 until width) {
+                var sum = 0.5
+                for (i in 0 until size) {
+                    sum += gauss[i] * padded[(h + i) * (width + size) + w + half]
+                }
+                sketch[h * width + w] = sum.toInt()
             }
-            sketch[index++] = sum.toInt()
         }
     }
 }
@@ -145,23 +159,25 @@ fun bilateral(sketch: IntArray, width: Int, height: Int, size: Int, sigmaC: Doub
     val coefficient = 1 / sqrt(variance * Math.PI)
     val gaussC = DoubleArray(256) { coefficient * exp(-(it * it) / variance) }
 
-    var index = 0
-    for (h in 0 until height) {
-        for (w in 0 until width) {
-            val current = sketch[index]
-            var sum = 0.0
-            var total = 0.0
-            for (i in 0 until size) {
-                for (j in 0 until size) {
-                    val pixel = padded[(h + i) * (width + size) + w + j]
-                    val s = gaussS[i][j]
-                    val c = gaussC[abs(current - pixel)]
-                    val weight = s * c
-                    sum += weight
-                    total += pixel * weight
+    parallel { cpu, cpus ->
+        for (h in cpu until height step cpus) {
+            for (w in 0 until width) {
+                val index = h * width + w
+                val current = sketch[index]
+                var sum = 0.0
+                var total = 0.0
+                for (i in 0 until size) {
+                    for (j in 0 until size) {
+                        val pixel = padded[(h + i) * (width + size) + w + j]
+                        val s = gaussS[i][j]
+                        val c = gaussC[abs(current - pixel)]
+                        val weight = s * c
+                        sum += weight
+                        total += pixel * weight
+                    }
                 }
+                sketch[index] = (total / sum + 0.5).toInt()
             }
-            sketch[index++] = (total / sum + 0.5).toInt()
         }
     }
 }
@@ -174,13 +190,16 @@ fun bilateral(sketch: IntArray, width: Int, height: Int, size: Int, sigmaC: Doub
  * @param sketch    The final sketch image.
  */
 fun blend(gray: IntArray, sketch: IntArray) {
-    sketch.forEachIndexed { index, pixel ->
-        if (pixel == 0) {
-            sketch[index] = 255
-        } else {
-            var blended = gray[index] * 256 / pixel
-            if (blended > 255) blended = 255
-            sketch[index] = blended
+    parallel { cpu, cpus ->
+        for (index in cpu until sketch.size step cpus) {
+            val pixel = sketch[index]
+            if (pixel == 0) {
+                sketch[index] = 255
+            } else {
+                var blended = gray[index] * 256 / pixel
+                if (blended > 255) blended = 255
+                sketch[index] = blended
+            }
         }
     }
 }
@@ -195,7 +214,12 @@ fun gamma(image: IntArray, gamma: Double) {
     val precalculated = (0..255).map {
         ((it / 255.0).pow(gamma) * 255.0 + 0.5).toInt()
     }.toList()
-    image.forEachIndexed { index, pixel -> image[index] = precalculated[pixel] }
+
+    parallel { cpu, cpus ->
+        for (index in cpu until image.size step cpus) {
+            image[index] = precalculated[image[index]]
+        }
+    }
 }
 
 /*
@@ -214,13 +238,17 @@ fun coloredPencil(image: IntArray, sketch: IntArray, hue: Double, saturation: Do
     // Convert image to HSV for colored pencil rendering.
     val hsv = DoubleArray(image.size * 3)
     RGBHSV(image, hsv)
-    var index = 0
-    sketch.forEach {
-        hsv[index++] *= hue
-        hsv[index] = hsv[index].pow(saturation)
-        index++
-        hsv[index++] = it / 255.0
+
+    parallel { cpu, cpus ->
+        for (i in cpu until sketch.size step cpus) {
+            val pixel = sketch[i]
+            val index = i * 3
+            hsv[index+0] *= hue
+            hsv[index+1] = hsv[index+1].pow(saturation)
+            hsv[index+2] = pixel / 255.0
+        }
     }
+
     HSVRGB(image, hsv)
 }
 
@@ -230,8 +258,13 @@ fun coloredPencil(image: IntArray, sketch: IntArray, hue: Double, saturation: Do
  * 
  * @param image     The image to convert.
  */
-fun RGB(image: IntArray) = image.forEachIndexed { index, pixel ->
-    image[index] = (pixel shl 16) or (pixel shl 8) or pixel
+fun RGB(image: IntArray) {
+    parallel { cpu, cpus ->
+        for (index in cpu until image.size step cpus) {
+            val pixel = image[index]
+            image[index] = (pixel shl 16) or (pixel shl 8) or pixel
+        }
+    }
 }
 
 /*
@@ -241,28 +274,31 @@ fun RGB(image: IntArray) = image.forEachIndexed { index, pixel ->
  * @param hsv       The destination array to store HSV values in.
  */
 fun RGBHSV(image: IntArray, hsv: DoubleArray) {
-    var index = 0
-    image.forEach {
-        val r = ((it shr 16) and 0xFF) / 255.0
-        val g = ((it shr 8) and 0xFF) / 255.0
-        val b = (it and 0xFF) / 255.0
+    parallel { cpu, cpus ->
+        for (i in cpu until image.size step cpus) {
+            val pixel = image[i]
+            val r = ((pixel shr 16) and 0xFF) / 255.0
+            val g = ((pixel shr 8) and 0xFF) / 255.0
+            val b = (pixel and 0xFF) / 255.0
 
-        val value = max(r, g, b)
-        val min = min(r, g, b)
-        val c = value - min
+            val value = max(r, g, b)
+            val min = min(r, g, b)
+            val c = value - min
 
-        val saturation = if (value == 0.0) 0.0 else c / value
+            val saturation = if (value == 0.0) 0.0 else c / value
 
-        var hue = if (c == 0.0) 0.0
-        else if (value == r) (g - b) / c
-        else if (value == g) (b - r) / c + 2.0
-        else (r - g) / c + 4.0
+            var hue = if (c == 0.0) 0.0
+            else if (value == r) (g - b) / c
+            else if (value == g) (b - r) / c + 2.0
+            else (r - g) / c + 4.0
 
-        hue = if (hue < 0.0) hue / 6.0 + 1.0 else hue / 6.0
+            hue = if (hue < 0.0) hue / 6.0 + 1.0 else hue / 6.0
 
-        hsv[index++] = hue
-        hsv[index++] = saturation
-        hsv[index++] = value
+            val index = i * 3
+            hsv[index+0] = hue
+            hsv[index+1] = saturation
+            hsv[index+2] = value
+        }
     }
 }
 
@@ -273,33 +309,35 @@ fun RGBHSV(image: IntArray, hsv: DoubleArray) {
  * @param hsv       The array holding HSV values.
  */
 fun HSVRGB(image: IntArray, hsv: DoubleArray) {
-    var index = 0
-    image.forEachIndexed { i, _ ->
-        val h = hsv[index++] * 360.0
-        val s = hsv[index++]
-        val v = hsv[index++]
+    parallel { cpu, cpus ->
+        for (i in cpu until image.size step cpus) {
+            val index = i * 3
+            val h = hsv[index+0] * 360.0
+            val s = hsv[index+1]
+            val v = hsv[index+2]
 
-        val c = s * v
-        val x = c * (1.0 - abs(h / 60.0 % 2.0 - 1.0))
-        val m = v - c
+            val c = s * v
+            val x = c * (1.0 - abs(h / 60.0 % 2.0 - 1.0))
+            val m = v - c
 
-        var R: Double
-        var G: Double
-        var B: Double
+            var R: Double
+            var G: Double
+            var B: Double
 
-        when {
-            h >= 300.0 -> { R = c; G = 0.0; B = x; }
-            h >= 240.0 -> { R = x; G = 0.0; B = c; }
-            h >= 180.0 -> { R = 0.0; G = x; B = c; }
-            h >= 120.0 -> { R = 0.0; G = c; B = x; }
-            h >= 60.0 -> { R = x; G = c; B = 0.0; }
-            else -> { R = c; G = x; B = 0.0; }
+            when {
+                h >= 300.0 -> { R = c; G = 0.0; B = x; }
+                h >= 240.0 -> { R = x; G = 0.0; B = c; }
+                h >= 180.0 -> { R = 0.0; G = x; B = c; }
+                h >= 120.0 -> { R = 0.0; G = c; B = x; }
+                h >= 60.0 -> { R = x; G = c; B = 0.0; }
+                else -> { R = c; G = x; B = 0.0; }
+            }
+
+            val r = ((R + m) * 255.0 + 0.5).toInt()
+            val g = ((G + m) * 255.0 + 0.5).toInt()
+            val b = ((B + m) * 255.0 + 0.5).toInt()
+
+            image[i] = (r shl 16) or (g shl 8) or b
         }
-
-        val r = ((R + m) * 255.0 + 0.5).toInt()
-        val g = ((G + m) * 255.0 + 0.5).toInt()
-        val b = ((B + m) * 255.0 + 0.5).toInt()
-
-        image[i] = (r shl 16) or (g shl 8) or b
     }
 }
